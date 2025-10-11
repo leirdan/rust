@@ -15,67 +15,67 @@ struct Table {
 impl Table {
     fn is_complete(&self) -> bool {
         for col in self.data.iter() {
-            if *col != 'X' || *col != 'O' {
+            if *col != 'X' && *col != 'O' {
                 return false;
             }
         }
 
         true
     }
-}
+    fn check_row(&self, ch: char) -> bool {
+        for row in [0, 3, 6] {
+            if self.data[row] == ch && self.data[row + 1] == ch && self.data[row + 2] == ch {
+                return true;
+            }
+        }
+        false
+    }
 
-fn check_row(table: &Table, ch: char) -> bool {
-    for row in [0, 3, 6] {
-        if table.data[row] == ch && table.data[row + 1] == ch && table.data[row + 2] == ch {
+    fn check_col(&self, ch: char) -> bool {
+        for col in [0, 1, 2] {
+            if self.data[col] == ch && self.data[col + 3] == ch && self.data[col + 6] == ch {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn check_diagonals(&self, ch: char) -> bool {
+        if self.data[0] == ch && self.data[4] == ch && self.data[8] == ch
+            || self.data[2] == ch && self.data[4] == ch && self.data[6] == ch
+        {
             return true;
         }
+        false
     }
-    false
-}
 
-fn check_col(table: &Table, ch: char) -> bool {
-    for col in [0, 1, 2] {
-        if table.data[col] == ch && table.data[col + 3] == ch && table.data[col + 6] == ch {
-            return true;
-        }
-    }
-    false
-}
-
-fn check_diagonals(table: &Table, ch: char) -> bool {
-    if table.data[0] == ch && table.data[4] == ch && table.data[8] == ch
-        || table.data[2] == ch && table.data[4] == ch && table.data[6] == ch
-    {
-        return true;
-    }
-    false
-}
-
-fn check_table(table: &Table) -> State {
-    if check_row(table, 'X') || check_col(table, 'X') || check_diagonals(table, 'X') {
-        return State::End('X');
-    } else if check_row(table, 'O') || check_col(table, 'O') || check_diagonals(table, 'O') {
-        return State::End('O');
-    } else if table.is_complete() {
-        return State::Draw;
-    }
-    State::Continue
-}
-fn print_table(table: &Table) {
-    for i in 0..3 {
-        print!(" ");
-        for j in 0..3 {
-            print!("{}", table.data[i * 3 + j]);
-            if j != 2 {
-                print!(" | ")
+    pub fn print(&self) {
+        for i in 0..3 {
+            print!(" ");
+            for j in 0..3 {
+                print!("{}", self.data[i * 3 + j]);
+                if j != 2 {
+                    print!(" | ")
+                };
+            }
+            if i != 2 {
+                println!("\n-----------")
             };
         }
-        if i != 2 {
-            println!("\n-----------")
-        };
+
+        println!();
     }
 
-    println!();
+    pub fn check(&self) -> State {
+        if self.check_row('X') || self.check_col('X') || self.check_diagonals('X') {
+            return State::End('X');
+        } else if self.check_row('O') || self.check_col('O') || self.check_diagonals('O') {
+            return State::End('O');
+        } else if self.is_complete() {
+            return State::Draw;
+        }
+        State::Continue
+    }
 }
 
 fn main() {
@@ -85,13 +85,13 @@ fn main() {
 
     loop {
         choice_txt.clear();
-        print_table(&table);
+        table.print();
         println!("Enter your choice: ");
         io::stdin().read_line(&mut choice_txt).unwrap();
 
         match choice_txt.trim().parse::<usize>() {
             Err(e) => {
-                println!("Enter a valid number!");
+                println!("Error: {}", e);
                 continue;
             }
             Ok(idx) => {
@@ -111,17 +111,17 @@ fn main() {
                     continue;
                 }
 
-                match check_table(&table) {
+                match table.check() {
                     State::Continue => {
                         x_turn = !x_turn;
                     }
                     State::Draw => {
-                        print_table(&table);
+                        table.print();
                         println!("Draw game!");
                         break;
                     }
                     State::End(winner) => {
-                        print_table(&table);
+                        table.print();
                         println!(
                             "Game ended and player {} is the winner!",
                             if winner == 'X' { &"1" } else { &"2" }
