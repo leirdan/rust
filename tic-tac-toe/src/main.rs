@@ -5,7 +5,7 @@ use std::io;
 enum State {
     Continue,
     Draw,
-    End(char),
+    End(usize),
 }
 
 struct Table {
@@ -68,9 +68,9 @@ impl Table {
 
     pub fn check(&self) -> State {
         if self.check_row('X') || self.check_col('X') || self.check_diagonals('X') {
-            return State::End('X');
+            return State::End(1);
         } else if self.check_row('O') || self.check_col('O') || self.check_diagonals('O') {
-            return State::End('O');
+            return State::End(2);
         } else if self.is_complete() {
             return State::Draw;
         }
@@ -122,10 +122,7 @@ fn main() {
                     }
                     State::End(winner) => {
                         table.print();
-                        println!(
-                            "Game ended and player {} is the winner!",
-                            if winner == 'X' { &"1" } else { &"2" }
-                        );
+                        println!("Game ended and player {} is the winner!", winner);
                         break;
                     }
                 };
