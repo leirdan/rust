@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fmt::{Display, Formatter};
 
 fn next(input: &str) -> Result<(usize, &str, &str), Option<usize>> {
     let mut start_idx = 0;
@@ -35,41 +36,22 @@ fn next(input: &str) -> Result<(usize, &str, &str), Option<usize>> {
     }
 }
 
-fn retrieve_tokens(mut input: &str) -> Box<Vec<&str>> {
-    let mut tokens = Box::new(Vec::new());
-    while !input.is_empty() {
-        let res = next(&input);
-        match res {
-            Ok((_, s, st)) => {
-                tokens.push(s);
-                input = st;
-            }
-            Err(None) => {}
-            Err(_) => panic!("Invalid expression was found!!"),
-        }
-    }
-
-    tokens
-}
-
 #[derive(Clone)]
-enum Expression<'a> {
+enum Expression {
     Number(i64),
     Symbol(char),
-    String(Vec<&'a str>),
     Exp {
-        left: Box<Expression<'a>>,
-        right: Box<Expression<'a>>,
-        operation: Box<Expression<'a>>,
+        left: Box<Expression>,
+        right: Box<Expression>,
+        operation: Box<Expression>,
     },
 }
 
-impl Expression<'_> {
+impl Expression {
     fn evaluate(&self) -> Option<i64> {
         match self {
             Expression::Number(num) => Some(*num),
             Expression::Symbol(sym) => None,
-            Expression::String(_) => None,
             Expression::Exp {
                 left,
                 right,
@@ -109,14 +91,8 @@ impl Expression<'_> {
 
     fn print(&self) {}
 
-    fn convert_tokens_to_exp() {}
-
-    fn tree(&self) {
-        self.tree_rec("", true, true);
-    }
-
-    fn tree_rec<'a>(&self, tab: &str, last: bool, root: bool) {
-        let create_exp = |v: &mut VecDeque<Expression<'a>>| {
+    fn convert_input_to_exp<'a>(mut input: &str) -> Box<Option<Expression>> {
+        let create_exp = |v: &mut VecDeque<Expression>| {
             let mut idx: Option<usize> = None;
             for (i, ex) in v.iter().enumerate() {
                 if let Expression::Symbol(sym) = ex {
@@ -147,6 +123,55 @@ impl Expression<'_> {
             }
         };
 
+        let mut tokens = Box::new(Vec::new());
+        while !input.is_empty() {
+            let res = next(&input);
+            match res {
+                Ok((_, s, st)) => {
+                    tokens.push(s);
+                    input = st;
+                }
+                Err(None) => {}
+                Err(_) => panic!("Invalid expression was found!!"),
+            }
+        }
+
+        let mut symbols: VecDeque<Expression> = VecDeque::new();
+        let mut expressions: Vec<Expression> = Vec::new();
+
+        for &token in tokens.iter() {
+            match token {
+                "+" | "-" | "%" | "/" | "*" => {
+                    symbols.push_back(Expression::Symbol(token.parse().unwrap()))
+                }
+                ")" => {
+                    let exp = create_exp(&mut symbols);
+                    symbols.push_front(exp.clone());
+                    expressions.push(exp);
+                }
+                num => match num.parse::<i64>() {
+                    Ok(n) => {
+                        symbols.push_back(Expression::Number(n));
+                    }
+                    Err(_) => {}
+                },
+            }
+        }
+
+        while symbols.len() != 1 {
+            let exp = create_exp(&mut symbols);
+            symbols.push_front(exp.clone());
+            expressions.push(exp);
+        }
+
+        Box::new(expressions.pop())
+    }
+
+    fn tree(&self) {
+        self.tree_rec("", true, true);
+    }
+
+    fn tree_rec<'a>(&self, tab: &str, last: bool, root: bool) {
         match self {
             Expression::Number(num) => {
                 println!(
@@ -176,39 +201,6 @@ impl Expression<'_> {
                     sym
                 );
             }
-            Expression::String(tokens) => {
-                let mut symbols: VecDeque<Expression> = VecDeque::new();
-                let mut expressions: Vec<Expression> = Vec::new();
-
-                for &token in tokens {
-                    match token {
-                        "+" | "-" | "%" | "/" | "*" => {
-                            symbols.push_back(Expression::Symbol(token.parse().unwrap()))
-                        }
-                        ")" => {
-                            let exp = create_exp(&mut symbols);
-                            symbols.push_front(exp.clone());
-                            expressions.push(exp);
-                        }
-                        num => match num.parse::<i64>() {
-                            Ok(n) => {
-                                symbols.push_back(Expression::Number(n));
-                            }
-                            Err(_) => {}
-                        },
-                    }
-                }
-
-                while symbols.len() != 1 {
-                    let exp = create_exp(&mut symbols);
-                    symbols.push_front(exp.clone());
-                    expressions.push(exp);
-                }
-
-                if let Some(exp) = expressions.pop() {
-                    exp.tree();
-                }
-            }
             Expression::Exp {
                 left,
                 right,
@@ -225,10 +217,6 @@ impl Expression<'_> {
 
 fn main() {
     let str = "10 + 20 * 30";
-    let tokens = retrieve_tokens(str);
-
-    let expr = Expression::String(*tokens);
-    expr.tree();
 }
 
 #[cfg(test)]
@@ -237,11 +225,49 @@ mod tests {
 
     #[test]
     fn exp1() {
-        // let str = "(-(10 + 20) + 30 + 40 + (50 + 60)) * -5"; // TODO: TÁ COM PROBLEMA AINDA
-        Expression::String(*retrieve_tokens("10 + 20")).tree();
-        Expression::String(*retrieve_tokens("10 / 0")).tree();
-        Expression::String(*retrieve_tokens("10 + 20")).tree();
-        Expression::String(*retrieve_tokens("(10 + 20) * 30")).evaluate();
-        Expression::String(*retrieve_tokens("10 + 20 * 30")).tree();
+        let exp = Expression::convert_input_to_exp("10 + 20").unwrap();
+        exp.tree();
+        let res = exp.evaluate();
+        match res {
+            None => {println!("Result: None")}
+            Some(n) => {println!("Result: {}", n)}
+        }
+        assert_eq!(res, Some(30));
     }
+
+    #[test]
+    fn exp2() {
+        let exp = Expression::convert_input_to_exp("10 / 0").unwrap();
+        exp.tree();
+        let res = exp.evaluate();
+        match res {
+            None => {println!("Result: None")}
+            Some(n) => {println!("Result: {}", n)}
+        }
+        assert_eq!(res, None);
+    }
+    #[test]
+    fn exp3() {
+        let exp = Expression::convert_input_to_exp("(10 + 20) * 30").unwrap();
+        exp.tree();
+        let res = exp.evaluate();
+        match res {
+            None => {println!("Result: None")}
+            Some(n) => {println!("Result: {}", n)}
+        }
+        assert_eq!(res, Some(900));
+    }
+    #[test]
+    fn exp4() {
+        let exp = Expression::convert_input_to_exp("10+ 20 * 30").unwrap();
+        exp.tree();
+        let res = exp.evaluate();
+        match res {
+            None => {println!("Result: None")}
+            Some(n) => {println!("Result: {}", n)}
+        }
+        assert_eq!(res, Some(610));
+    }
+    #[test]
+    fn exp5() {}
 }
