@@ -1,62 +1,57 @@
 fn next(input: &str) -> Result<(usize, &str, &str), Option<usize>> {
-    let mut start_idx = 0;
-    for (i, c) in input.char_indices() {
-        if c.is_whitespace() || c == '🦀' {
-            start_idx = i + c.len_utf8();
-        } else {
-            break;
-        }
+    if input.is_empty() {
+        return Err(None);
     }
 
-    let slice = &input[start_idx..];
-    let mut chars = slice.char_indices();
+    match input.char_indices().nth(0) {
+        None => Err(None),
+        Some((idx, ch)) => {
+            if ch.is_whitespace() || ch.eq(&'🦀') {
+                Ok((idx + 1, "", &input[idx + 1..]))
+            } else if ch == '+' || ch == '-' || ch == '/' || ch == '*' || ch == '🐧' {
+                Ok((idx + 1, &input[idx..=idx], &input[idx + 1..]))
+            } else if ch.is_ascii_digit() {
+                let mut final_idx = idx;
 
-    let (first_i, first_c) = match chars.next() {
-        None => return Err(None),
-        Some(c) => c,
-    };
+                for ch2 in input.chars() {
+                    if ch2.is_ascii_digit() {
+                        final_idx += 1;
+                    } else {
+                        break;
+                    }
+                }
 
-    if first_c.is_ascii_digit() {
-        let end = slice
-            .char_indices()
-            .skip_while(|&(_, c)| c.is_ascii_digit())
-            .next()
-            .map(|(i, _)| i)
-            .unwrap_or(slice.len());
-
-        Ok((start_idx + first_i, &slice[first_i..end], &slice[end..]))
-    } else if ['+', '-', '*', '/', '🐧'].contains(&first_c) {
-        let end = first_i + first_c.len_utf8();
-        Ok((start_idx + first_i, &slice[first_i..end], &slice[end..]))
-    } else {
-        Err(Some(start_idx + first_i))
+                Ok((idx + 1, &input[idx..final_idx], &input[final_idx..]))
+            } else {
+                Err(Some(idx))
+            }
+        }
     }
 }
 
 fn main() {
     let mut input_line = String::new();
     std::io::stdin().read_line(&mut input_line).unwrap();
-    let mut input: &str = input_line.as_str();
+    let mut input: &str = input_line.trim();
     let mut offset = 1;
 
     while !input.is_empty() {
-        let res = next(&input);
-        match res {
-            Ok((pos, symbol, substr)) => {
-                let char_pos = input[..pos].chars().count() + offset;
-                print!("({}, {}) ", symbol, char_pos);
-
-                offset = char_pos + symbol.chars().count();
-                input = substr;
+        match next(input) {
+            Ok((idx, element, str)) => {
+                if !element.is_empty() {
+                    print!("(\"{}\", {} ) ", element, offset);
+                    offset += element.len();
+                } else {
+                    offset += 1;
+                }
+                input = str;
             }
-            Err(Some(pos)) => {
-                let char_pos = input[..pos].chars().count() + offset;
-                print!("Erro na posição {} ", char_pos);
+            Err(Some(idx)) => {
+                offset += idx;
+                print!("Erro na posição {}", offset);
                 break;
             }
-            Err(None) => {
-                break;
-            }
+            Err(None) => offset += 1,
         }
     }
 }
