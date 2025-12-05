@@ -6,10 +6,14 @@ fn next(input: &str) -> Result<(usize, &str, &str), Option<usize>> {
     match input.char_indices().nth(0) {
         None => Err(None),
         Some((idx, ch)) => {
-            if ch.is_whitespace() || ch.eq(&'🦀') {
+            if ch.is_whitespace() {
                 Ok((idx + 1, "", &input[idx + 1..]))
-            } else if ch == '+' || ch == '-' || ch == '/' || ch == '*' || ch == '🐧' {
+            } else if ch == '🦀' {
+                Ok((idx + 1, "", &input[idx + 4..]))
+            } else if ch == '+' || ch == '-' || ch == '/' || ch == '*' {
                 Ok((idx + 1, &input[idx..=idx], &input[idx + 1..]))
+            } else if ch == '🐧' {
+                Ok((idx + 1, &input[idx..idx + 4], &input[idx + 4..]))
             } else if ch.is_ascii_digit() {
                 let mut final_idx = idx;
 
@@ -21,7 +25,7 @@ fn next(input: &str) -> Result<(usize, &str, &str), Option<usize>> {
                     }
                 }
 
-                Ok((idx + 1, &input[idx..final_idx], &input[final_idx..]))
+                Ok((final_idx, &input[idx..final_idx], &input[final_idx..]))
             } else {
                 Err(Some(idx))
             }
@@ -39,8 +43,8 @@ fn main() {
         match next(input) {
             Ok((idx, element, str)) => {
                 if !element.is_empty() {
-                    print!("(\"{}\", {} ) ", element, offset);
-                    offset += element.len();
+                    print!("(\"{}\", {}) ", element, offset);
+                    offset += idx;
                 } else {
                     offset += 1;
                 }
